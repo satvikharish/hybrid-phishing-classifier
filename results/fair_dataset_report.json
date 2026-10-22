@@ -1,0 +1,12 @@
+{
+  "input_rows": 126620,
+  "phishing_rows_before": 76620,
+  "benign_rows_before": 50000,
+  "distinct_phishing_hostnames": 41031,
+  "distinct_phishing_registered_domains": 14876,
+  "phishing_hostnames_on_popular_legit_domains_dropped": 22344,
+  "share_of_distinct_phishing_hostnames_on_popular_legit_domains": 0.5446,
+  "final_phishing": 15652,
+  "final_benign": 49978,
+  "final_phishing_registered_domains": 14366
+}

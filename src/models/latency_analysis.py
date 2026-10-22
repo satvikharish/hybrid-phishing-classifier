@@ -5,11 +5,13 @@ deployment cost of adding host-based telemetry (the proposal's stated
 "extraction latency trade-offs" discussion point).
 """
 import asyncio
+import json
 import os
 import time
 
 import aiohttp
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 from src.features.host_telemetry import extract_host_features
@@ -74,10 +76,80 @@ def run(sample_size: int = 50) -> pd.DataFrame:
     return results
 
 
+def _pct(a):
+    a = np.asarray(a, float)
+    return {"n": int(len(a)), "mean": float(a.mean()), "median": float(np.median(a)),
+            "p90": float(np.percentile(a, 90)), "p95": float(np.percentile(a, 95)), "max": float(a.max())}
+
+
+def run_fast_path(n_per_class: int = 60, out_path: str = None) -> dict:
+    """Time the DNS + SSL checks only, on hosts with no cached DNS or SSL result."""
+    from src.features.host_telemetry import get_dns_flags, get_ssl_info
+    from src.utils.cache import CACHE_DIR
+
+    fair = pd.read_csv(os.path.join(PROCESSED_DIR, "fair_dataset.csv")).sample(frac=1.0, random_state=77)
+    fair = fair[[not os.path.exists(os.path.join(CACHE_DIR, "dns", f"{h}.json")) for h in fair.hostname]]
+    fair = fair[[not os.path.exists(os.path.join(CACHE_DIR, "ssl", f"{h}.json")) for h in fair.hostname]]
+    picked = pd.concat([fair[fair.label == 1].head(n_per_class), fair[fair.label == 0].head(n_per_class)])
+
+    async def one(host):
+        t = time.perf_counter()
+        await asyncio.gather(get_dns_flags(host), get_ssl_info(host))
+        return (time.perf_counter() - t) * 1000
+
+    async def main():
+        return [await one(h) for h in picked.hostname]
+
+    ms = np.array(asyncio.run(main()))
+    out = {"dns_plus_ssl_uncached_ms": _pct(ms), "phishing": _pct(ms[:n_per_class]), "benign": _pct(ms[n_per_class:])}
+    out_path = out_path or os.path.join(PROCESSED_DIR, "latency_fast_path.json")
+    with open(out_path, "w") as f:
+        json.dump(out, f, indent=2)
+    print(json.dumps(out, indent=1))
+    return out
+
+
+def run_extended(n_per_class: int = 100) -> dict:
+    """Larger latency study on hosts that are NOT in the lookup cache.
+
+    Times each host once with an empty cache entry (first pass) and once
+    again straight away (cached pass), sequentially, one host at a time.
+    """
+    from src.utils.cache import CACHE_DIR
+
+    fair = pd.read_csv(os.path.join(PROCESSED_DIR, "fair_dataset.csv"))
+    fair = fair.sample(frac=1.0, random_state=11)
+    fair = fair[[not os.path.exists(os.path.join(CACHE_DIR, "dns", f"{h}.json")) for h in fair.hostname]]
+    picked = pd.concat([fair[fair.label == 1].head(n_per_class), fair[fair.label == 0].head(n_per_class)])
+    hosts = [f"http://{h}" for h in picked.hostname]
+
+    lex_ms = []
+    for _ in range(20):
+        lex_ms += measure_lexical_latency(hosts)
+    cold_ms = measure_host_latency(hosts)
+    warm_ms = measure_host_latency(hosts)
+
+    df = pd.DataFrame({"hostname": picked.hostname.values, "label": picked.label.values,
+                       "host_uncached_ms": cold_ms, "host_cached_ms": warm_ms})
+    df.to_csv(os.path.join(PROCESSED_DIR, "latency_extended.csv"), index=False)
+    summary = {"lexical_ms": _pct(lex_ms), "host_uncached_ms": _pct(cold_ms), "host_cached_ms": _pct(warm_ms),
+               "host_uncached_phishing_ms": _pct(df[df.label == 1].host_uncached_ms),
+               "host_uncached_benign_ms": _pct(df[df.label == 0].host_uncached_ms)}
+    with open(os.path.join(PROCESSED_DIR, "latency_extended.json"), "w") as f:
+        json.dump(summary, f, indent=2)
+    print(json.dumps(summary, indent=2))
+    return summary
+
+
 if __name__ == "__main__":
     import sys
-    sample = int(sys.argv[1]) if len(sys.argv) > 1 else 50
-    out = run(sample_size=sample)
-    out_path = os.path.join(PROCESSED_DIR, "latency_results.csv")
-    out.to_csv(out_path, index=False)
-    print(f"[ok] wrote {out_path}")
+    if len(sys.argv) > 1 and sys.argv[1] == "extended":
+        run_extended(int(sys.argv[2]) if len(sys.argv) > 2 else 100)
+    elif len(sys.argv) > 1 and sys.argv[1] == "fast":
+        run_fast_path(int(sys.argv[2]) if len(sys.argv) > 2 else 60, sys.argv[3] if len(sys.argv) > 3 else None)
+    else:
+        sample = int(sys.argv[1]) if len(sys.argv) > 1 else 50
+        out = run(sample_size=sample)
+        out_path = os.path.join(PROCESSED_DIR, "latency_results.csv")
+        out.to_csv(out_path, index=False)
+        print(f"[ok] wrote {out_path}")
