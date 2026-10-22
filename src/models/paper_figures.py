@@ -1,7 +1,7 @@
 """Five three-panel paper figures (teaser, architecture, result), one per claim.
 
-Reads the CSV/JSON results written by fair_eval.py, temporal_validation.py and
-latency_analysis.py. Nothing here is typed in by hand except a few counts that
+Reads the aggregate results in results/ (written by export_results.py from the output of
+fair_eval.py, temporal_validation.py and latency_analysis.py). Nothing here is typed in by hand except a few counts that
 are printed in the matching report JSON files.
 """
 import json
@@ -16,7 +16,7 @@ import pandas as pd
 from matplotlib.patches import FancyBboxPatch, Patch
 from sklearn.metrics import roc_curve
 
-P = os.path.join(os.path.dirname(__file__), "..", "..", "data", "processed")
+P = os.path.join(os.path.dirname(__file__), "..", "..", "results")
 OUT = os.path.join(os.path.dirname(__file__), "..", "..", "reports", "figures")
 
 LEX, HOST, HYB, GREY, INK = "#3A6EA5", "#E08E45", "#3F8F6B", "#8A8F98", "#222222"
@@ -263,7 +263,7 @@ if __name__ == "__main__":
     fast = rd("fair_fast_subset_folds.csv")
     base = folds.groupby("model").auroc.mean().to_dict()
     fig1(rd("fair_lexical_inflation.csv"), json.load(open(os.path.join(P, "fair_dataset_report.json"))))
-    fig2(folds, rd("fair_oof_predictions.csv"))
+    fig2(folds, rd("fair_oof_scores.csv"))
     fig3(folds, fast)
     fig4(json.load(open(os.path.join(P, "latency_extended.json"))), json.load(open(os.path.join(P, "latency_fast_path.json"))), rd("fair_cascade.csv"))
     fig5(rd("temporal_hybrid_results.csv"), json.load(open(os.path.join(P, "temporal_hybrid_bootstrap.json"))),

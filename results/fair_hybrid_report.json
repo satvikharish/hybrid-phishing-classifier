@@ -1,0 +1,34 @@
+{
+  "n_rows": 3000,
+  "n_phishing": 1500,
+  "n_domains": 2999,
+  "tuned_xgb_params": {
+    "subsample": 0.9,
+    "n_estimators": 300,
+    "max_depth": 4,
+    "learning_rate": 0.01,
+    "colsample_bytree": 0.8
+  },
+  "n_tuning_rows": 599,
+  "n_eval_rows": 2401,
+  "domain_bootstrap_hybrid_minus_lexical": [
+    {
+      "metric": "auroc",
+      "mean_diff": 0.09189428326289388,
+      "ci_low": 0.07961657624278506,
+      "ci_high": 0.10306078433101352
+    },
+    {
+      "metric": "ap",
+      "mean_diff": 0.06624901040805474,
+      "ci_low": 0.056835614204890174,
+      "ci_high": 0.07631459814136853
+    }
+  ],
+  "alive_subset_rows": 2040,
+  "alive_subset_phishing": 938,
+  "latency_ms_used": {
+    "lexical": 1.3756582500000114,
+    "host_telemetry": 1008.3489895499994
+  }
+}

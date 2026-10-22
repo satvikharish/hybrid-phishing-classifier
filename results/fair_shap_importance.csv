@@ -1,0 +1,25 @@
+feature,mean_abs_shap,source
+has_txt_record,0.95377237,Server check
+has_valid_ssl,0.63360506,Server check
+num_subdomains,0.51105565,URL text
+ssl_days_until_expiry,0.21141532,Server check
+url_length,0.19685909,URL text
+has_mx_record,0.18256472,Server check
+domain_age_days,0.1740363,Server check
+num_hyphens,0.08972993,URL text
+has_a_record,0.06424073,Server check
+shannon_entropy,0.06248155,URL text
+hostname_length,0.04852587,URL text
+digit_ratio,0.033597846,URL text
+num_dots,0.016171345,URL text
+num_digits,0.013666386,URL text
+http_status,0.0049761715,Server check
+server_header_present,0.0010762286,Server check
+has_whois_record,0.000963446,Server check
+has_ip_address,0.0,URL text
+suspicious_keyword_count,0.0,URL text
+num_special_chars,0.0,URL text
+num_underscores,0.0,URL text
+has_hsts,0.0,Server check
+has_csp,0.0,Server check
+has_x_frame_options,0.0,Server check
